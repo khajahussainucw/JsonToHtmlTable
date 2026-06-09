@@ -96,6 +96,15 @@ namespace JsonToHtmlTable
         /// Serializes <paramref name="value"/> to JSON using <see cref="JsonSerializer"/> and
         /// renders it as an HTML table. A convenience for callers who already have a POCO.
         /// </summary>
+        /// <exception cref="JsonException">
+        /// Thrown when <paramref name="value"/> contains cyclic references (without an
+        /// appropriate <see cref="System.Text.Json.Serialization.ReferenceHandler"/>),
+        /// or when serialization otherwise fails.
+        /// </exception>
+        /// <exception cref="NotSupportedException">
+        /// Thrown when the type of <paramref name="value"/> (or one of its members) has no
+        /// compatible <see cref="System.Text.Json.Serialization.JsonConverter"/>.
+        /// </exception>
         public static string ConvertObject(
             object? value,
             HtmlTableOptions? options = null,
@@ -109,9 +118,16 @@ namespace JsonToHtmlTable
 
         /// <summary>
         /// Attempts to convert <paramref name="json"/> to an HTML table.
-        /// Returns <c>true</c> on success; <c>false</c> if the input was not valid JSON,
-        /// in which case <paramref name="html"/> is set to an empty string.
+        /// Returns <c>true</c> on success; <c>false</c> if the input was null, empty,
+        /// not valid JSON, or otherwise unsupported, in which case <paramref name="html"/>
+        /// is set to an empty string.
         /// </summary>
+        /// <remarks>
+        /// This method swallows recoverable input-shape exceptions
+        /// (<see cref="JsonException"/>, <see cref="ArgumentException"/>,
+        /// <see cref="NotSupportedException"/>) and reports them as <c>false</c>.
+        /// Fatal exceptions such as <see cref="OutOfMemoryException"/> propagate as normal.
+        /// </remarks>
         public static bool TryConvert(string? json, out string html, HtmlTableOptions? options = null)
         {
             if (json == null)
@@ -125,7 +141,10 @@ namespace JsonToHtmlTable
                 html = Convert(json, options);
                 return true;
             }
-            catch (JsonException)
+            catch (Exception ex) when (
+                ex is JsonException ||
+                ex is ArgumentException ||
+                ex is NotSupportedException)
             {
                 html = string.Empty;
                 return false;

@@ -482,6 +482,21 @@ public class ConverterTests
         Assert.Contains("5G", html);
     }
 
+    [Fact]
+    public void ConvertObject_CyclicReference_ThrowsJsonException()
+    {
+        // Documented contract: ConvertObject can throw JsonException for cyclic POCOs.
+        var node = new CycleNode();
+        node.Self = node;
+
+        Assert.Throws<JsonException>(() => JsonToHtmlConverter.ConvertObject(node));
+    }
+
+    private class CycleNode
+    {
+        public CycleNode? Self { get; set; }
+    }
+
     // ---------- TryConvert ----------
 
     [Fact]
@@ -520,6 +535,25 @@ public class ConverterTests
     public void TryConvert_WhitespaceOnly_ReturnsFalse()
     {
         var ok = JsonToHtmlConverter.TryConvert("   \t\n", out var html);
+        Assert.False(ok);
+        Assert.Equal(string.Empty, html);
+    }
+
+    [Fact]
+    public void TryConvert_ExceedingParseDepthLimit_ReturnsFalseNotThrows()
+    {
+        // Deeply nested JSON combined with a tight parse-depth ceiling exercises the
+        // ArgumentException / JsonException branches of TryConvert's broader catch.
+        var deeplyNested = new string('[', 100) + new string(']', 100);
+
+        var ok = JsonToHtmlConverter.TryConvert(
+            deeplyNested,
+            out var html,
+            new HtmlTableOptions
+            {
+                ParseOptions = new JsonDocumentOptions { MaxDepth = 2 }
+            });
+
         Assert.False(ok);
         Assert.Equal(string.Empty, html);
     }
