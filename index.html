@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JsonToHtmlTable — JSON in, HTML &lt;table&gt; out</title>
+<meta name="description" content="A small .NET library that converts any JSON into a clean, XSS-safe HTML table. Built on System.Text.Json, targets netstandard2.0, no Newtonsoft dependency.">
+<link rel="canonical" href="https://jsontotable.org/">
+<meta property="og:title" content="JsonToHtmlTable">
+<meta property="og:description" content="JSON in, HTML <table> out. Built on System.Text.Json, no Newtonsoft baggage, runs everywhere netstandard2.0 reaches.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jsontotable.org/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="JsonToHtmlTable">
+<meta name="twitter:description" content="JSON in, HTML <table> out. .NET, no Newtonsoft.">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='6' y='6' width='52' height='52' rx='6' fill='%231f6feb'/><g fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'><rect x='16' y='18' width='32' height='28'/><line x1='16' y1='28' x2='48' y2='28'/><line x1='32' y1='18' x2='32' y2='46'/></g></svg>">
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-alt: #f6f8fa;
+  --fg: #1f2328;
+  --fg-muted: #59636e;
+  --border: #d1d9e0;
+  --border-soft: #e6ebf0;
+  --accent: #0969da;
+  --accent-fg: #ffffff;
+  --code-bg: #f6f8fa;
+  --code-fg: #1f2328;
+  --th-bg: #f4f4f4;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --bg-alt: #151b23;
+    --fg: #f0f6fc;
+    --fg-muted: #9198a1;
+    --border: #2f3640;
+    --border-soft: #21262d;
+    --accent: #4493f8;
+    --accent-fg: #ffffff;
+    --code-bg: #151b23;
+    --code-fg: #f0f6fc;
+    --th-bg: #1c232b;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+header.site {
+  border-bottom: 1px solid var(--border-soft);
+  padding: 16px 0;
+  background: var(--bg);
+}
+header.site .wrap {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--fg); }
+.brand svg { width: 24px; height: 24px; }
+nav.site a { color: var(--fg-muted); margin-left: 20px; font-size: 14px; }
+nav.site a:hover { color: var(--fg); }
+
+section.hero { padding: 72px 0 48px; }
+section.hero h1 {
+  font-size: clamp(36px, 5vw, 56px);
+  line-height: 1.1; margin: 0 0 16px; letter-spacing: -0.02em;
+}
+section.hero p.lede {
+  font-size: 20px; color: var(--fg-muted); max-width: 720px; margin: 0 0 28px;
+}
+.install {
+  display: flex; align-items: stretch; max-width: 520px;
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  background: var(--code-bg);
+}
+.install code {
+  flex: 1; padding: 12px 16px;
+  font: 14px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--code-fg); white-space: nowrap; overflow-x: auto;
+}
+.install button {
+  border: 0; border-left: 1px solid var(--border);
+  background: var(--bg-alt); color: var(--fg);
+  padding: 0 16px; font: inherit; font-size: 13px; cursor: pointer;
+}
+.install button:hover { background: var(--border-soft); }
+.install button:active { transform: translateY(1px); }
+
+.cta { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; }
+.btn {
+  display: inline-block; padding: 10px 18px; border-radius: 8px;
+  font-size: 14px; font-weight: 600; border: 1px solid var(--border);
+  background: var(--bg); color: var(--fg);
+}
+.btn:hover { text-decoration: none; background: var(--bg-alt); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+
+.repo-line {
+  margin: 18px 0 0; font-size: 14px; color: var(--fg-muted);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.repo-line a { color: var(--fg); }
+.repo-line a:hover { color: var(--accent); }
+
+section.block { padding: 48px 0; border-top: 1px solid var(--border-soft); }
+section.block h2 {
+  font-size: 28px; letter-spacing: -0.01em; margin: 0 0 8px;
+}
+section.block p.sub { color: var(--fg-muted); margin: 0 0 24px; max-width: 720px; }
+
+.split { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 820px) { .split { grid-template-columns: 1fr 1fr; gap: 28px; } }
+.split .label {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--fg-muted); margin-bottom: 8px;
+}
+
+pre.code {
+  margin: 0; padding: 16px 18px;
+  background: var(--code-bg); color: var(--code-fg);
+  border: 1px solid var(--border); border-radius: 8px;
+  font: 13.5px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  overflow-x: auto;
+}
+.preview {
+  padding: 16px 18px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  overflow-x: auto;
+}
+
+/* Style the library's default output (.json-to-html-table) to fit the page. */
+.preview .json-to-html-table {
+  border-collapse: collapse;
+  margin: 0;
+  font: 13.5px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--fg);
+}
+.preview .json-to-html-table th,
+.preview .json-to-html-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.preview .json-to-html-table th {
+  background: var(--th-bg);
+  font-weight: 600;
+}
+.preview .json-to-html-table .json-to-html-table { margin: 0; }
+
+.feature-grid {
+  display: grid; grid-template-columns: 1fr; gap: 16px;
+}
+@media (min-width: 720px) { .feature-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 980px) { .feature-grid { grid-template-columns: 1fr 1fr 1fr; } }
+.feature {
+  border: 1px solid var(--border-soft); border-radius: 8px;
+  padding: 18px 20px; background: var(--bg-alt);
+}
+.feature h3 { margin: 0 0 6px; font-size: 16px; }
+.feature p { margin: 0; color: var(--fg-muted); font-size: 14px; }
+
+table.options {
+  width: 100%; border-collapse: collapse; font-size: 14px;
+}
+table.options th, table.options td {
+  border-bottom: 1px solid var(--border-soft);
+  padding: 10px 12px; text-align: left; vertical-align: top;
+}
+table.options th { background: var(--bg-alt); font-weight: 600; }
+table.options code {
+  font: 12.5px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  background: var(--code-bg); padding: 2px 6px; border-radius: 4px;
+}
+
+footer.site {
+  border-top: 1px solid var(--border-soft);
+  padding: 32px 0 48px; color: var(--fg-muted); font-size: 14px;
+}
+footer.site .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
+footer.site a { color: var(--fg-muted); }
+footer.site a:hover { color: var(--fg); }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="6" width="52" height="52" rx="6" fill="currentColor" opacity=".12"/><g fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"><rect x="16" y="18" width="32" height="28"/><line x1="16" y1="28" x2="48" y2="28"/><line x1="32" y1="18" x2="32" y2="46"/></g></svg>
+      JsonToHtmlTable
+    </a>
+    <nav class="site">
+      <a href="#examples">Examples</a>
+      <a href="#options">Options</a>
+      <a href="https://github.com/khajahussainucw/JsonToHtmlTable">GitHub</a>
+      <a href="https://www.nuget.org/packages/JsonToHtmlTable">NuGet</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>JSON in, HTML <code>&lt;table&gt;</code> out.</h1>
+    <p class="lede">
+      A small .NET library that converts any JSON — objects, arrays, deeply nested
+      structures — into a clean, XSS-safe HTML table. Built on <code>System.Text.Json</code>,
+      targets <code>netstandard2.0</code>, no <code>Newtonsoft.Json</code> dragged into your project.
+    </p>
+
+    <div class="install" role="group" aria-label="Install command">
+      <code id="install-cmd">dotnet add package JsonToHtmlTable</code>
+      <button type="button" onclick="(function(b){var t=document.getElementById('install-cmd').textContent;navigator.clipboard&amp;&amp;navigator.clipboard.writeText(t);var o=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=o;},1400);})(this)">Copy</button>
+    </div>
+
+    <div class="cta">
+      <a class="btn primary" href="https://www.nuget.org/packages/JsonToHtmlTable">Get on NuGet</a>
+      <a class="btn" href="https://github.com/khajahussainucw/JsonToHtmlTable">View on GitHub</a>
+    </div>
+    <p class="repo-line">
+      Source &middot; <a href="https://github.com/khajahussainucw/JsonToHtmlTable/">github.com/khajahussainucw/JsonToHtmlTable</a>
+    </p>
+  </div>
+</section>
+
+<section class="block" id="examples">
+  <div class="wrap">
+    <h2>An object becomes a two-column table</h2>
+    <p class="sub">
+      Pass a JSON object in, get a <code>Key</code> / <code>Value</code> table back.
+      Nested objects render as inner tables, arrays render as inner tables — recursively, all the way down.
+    </p>
+
+    <div class="split">
+      <div>
+        <div class="label">C#</div>
+<pre class="code">using JsonToHtmlTable;
+
+string json = """
+{
+    "subscriberId": "SUB-100245",
+    "msisdn": "+91-9876500000",
+    "planName": "Postpaid Pro 599",
+    "isActive": true,
+    "balance": 412.75,
+    "tags": ["VoLTE", "5G", "Roaming"],
+    "address": {
+        "circle": "APAC-IN",
+        "billingZone": "ZN-7"
+    }
+}
+""";
+
+string html = JsonToHtmlConverter.Convert(json);</pre>
+      </div>
+      <div>
+        <div class="label">Rendered output</div>
+        <div class="preview"><table class="json-to-html-table"><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody><tr><td>subscriberId</td><td>SUB-100245</td></tr><tr><td>msisdn</td><td>+91-9876500000</td></tr><tr><td>planName</td><td>Postpaid Pro 599</td></tr><tr><td>isActive</td><td>true</td></tr><tr><td>balance</td><td>412.75</td></tr><tr><td>tags</td><td><table class="json-to-html-table"><thead><tr><th>Value</th></tr></thead><tbody><tr><td>VoLTE</td></tr><tr><td>5G</td></tr><tr><td>Roaming</td></tr></tbody></table></td></tr><tr><td>address</td><td><table class="json-to-html-table"><thead><tr><th>Key</th><th>Value</th></tr></thead><tbody><tr><td>circle</td><td>APAC-IN</td></tr><tr><td>billingZone</td><td>ZN-7</td></tr></tbody></table></td></tr></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>An array of records becomes a grid</h2>
+    <p class="sub">
+      One column per field, one row per record. If records have different keys,
+      the columns are the union — missing cells fall back to your <code>NullText</code>.
+    </p>
+
+    <div class="split">
+      <div>
+        <div class="label">C#</div>
+<pre class="code">string cdrs = """
+[
+    { "callId": "C-001", "originator": "9876500000", "destination": "9123400000", "durationSec":  73, "billedAmount": 1.21 },
+    { "callId": "C-002", "originator": "9876500001", "destination": "9123400022", "durationSec":  14, "billedAmount": 0.30 },
+    { "callId": "C-003", "originator": "9876500099", "destination": "9123400088", "durationSec": 412, "billedAmount": 6.85 }
+]
+""";
+
+string html = JsonToHtmlConverter.Convert(cdrs);</pre>
+      </div>
+      <div>
+        <div class="label">Rendered output</div>
+        <div class="preview"><table class="json-to-html-table"><thead><tr><th>callId</th><th>originator</th><th>destination</th><th>durationSec</th><th>billedAmount</th></tr></thead><tbody><tr><td>C-001</td><td>9876500000</td><td>9123400000</td><td>73</td><td>1.21</td></tr><tr><td>C-002</td><td>9876500001</td><td>9123400022</td><td>14</td><td>0.30</td></tr><tr><td>C-003</td><td>9876500099</td><td>9123400088</td><td>412</td><td>6.85</td></tr></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>Why pick this one</h2>
+    <div class="feature-grid">
+      <div class="feature">
+        <h3>No Newtonsoft baggage</h3>
+        <p>Built on <code>System.Text.Json</code>. Installing it doesn't drag a JSON.NET version into your project graph.</p>
+      </div>
+      <div class="feature">
+        <h3>Runs basically everywhere</h3>
+        <p>Targets <code>netstandard2.0</code> — old .NET Framework apps, modern .NET 10, Xamarin, Unity, the works.</p>
+      </div>
+      <div class="feature">
+        <h3>XSS-safe by default</h3>
+        <p>Every value and key passes through <code>HtmlEncoder</code>. International characters preserved; dangerous ones escaped.</p>
+      </div>
+      <div class="feature">
+        <h3>Handles weird JSON</h3>
+        <p>Top-level primitives, mixed-type arrays, arrays of arrays, deep nesting, big numbers, Unicode — covered.</p>
+      </div>
+      <div class="feature">
+        <h3>Streams big payloads</h3>
+        <p><code>TextWriter</code> overloads write directly to a file or HTTP response — no intermediate string allocation.</p>
+      </div>
+      <div class="feature">
+        <h3>Doesn't throw on bad input</h3>
+        <p><code>TryConvert</code> returns <code>false</code> for invalid or empty JSON, so user-supplied input never crashes you.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="options">
+  <div class="wrap">
+    <h2>Customize what's emitted</h2>
+    <p class="sub">
+      Default output is a bare <code>&lt;table class="json-to-html-table"&gt;…&lt;/table&gt;</code>
+      with no inline styling — meant for pages that already have a stylesheet.
+      Flip <code>InlineStyles</code> to get borders and padding baked in for places CSS won't reach (HTML email, Notion, quick test pages).
+    </p>
+
+<pre class="code">var html = JsonToHtmlConverter.Convert(json, new HtmlTableOptions
+{
+    TableCssClass        = "table table-striped",
+    KeyHeader            = "Field",
+    ValueHeader          = "Data",
+    PrimitiveArrayHeader = "Tag",
+    NullText             = "&mdash;",
+    ShowRowNumbers       = true,
+    KeyTransform         = key =&gt; Regex.Replace(key, "([a-z])([A-Z])", "$1 $2"),
+    InlineStyles         = true,
+    MaxDepth             = 32,
+});</pre>
+
+    <table class="options" style="margin-top: 24px">
+      <thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>TableCssClass</code></td><td><code>"json-to-html-table"</code></td><td>The <code>class</code> attribute on every <code>&lt;table&gt;</code>. <code>null</code> to drop it.</td></tr>
+        <tr><td><code>KeyHeader</code> / <code>ValueHeader</code></td><td><code>"Key"</code> / <code>"Value"</code></td><td>Headers for the two-column object view.</td></tr>
+        <tr><td><code>PrimitiveArrayHeader</code></td><td><code>"Value"</code></td><td>Header for arrays of primitives. <code>null</code> to skip the header row.</td></tr>
+        <tr><td><code>NullText</code></td><td><code>""</code></td><td>What to render for JSON <code>null</code> and missing grid cells.</td></tr>
+        <tr><td><code>RenderArrayOfObjectsAsGrid</code></td><td><code>true</code></td><td>Off to render each record as its own little table instead of a grid.</td></tr>
+        <tr><td><code>ShowRowNumbers</code></td><td><code>false</code></td><td>Adds a leading index column to grids and primitive arrays.</td></tr>
+        <tr><td><code>KeyTransform</code></td><td><code>null</code></td><td><code>Func&lt;string,string&gt;</code> to rewrite property names at render time.</td></tr>
+        <tr><td><code>InlineStyles</code></td><td><code>false</code></td><td>Inline <code>style="..."</code> on every table/th/td — looks right without CSS.</td></tr>
+        <tr><td><code>MaxDepth</code></td><td><code>64</code></td><td>Safety net for pathological JSON.</td></tr>
+        <tr><td><code>ParseOptions</code></td><td>strict</td><td><code>JsonDocumentOptions</code> — opt into comments and trailing commas.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>The whole API surface</h2>
+    <p class="sub">
+      One static class, a handful of overloads, one options bag. Resist the urge to look for more.
+    </p>
+<pre class="code">public static class JsonToHtmlConverter
+{
+    public static string Convert(string json, HtmlTableOptions? options = null);
+    public static void   Convert(string json, TextWriter writer, HtmlTableOptions? options = null);
+
+    public static string Convert(JsonDocument document, HtmlTableOptions? options = null);
+    public static string Convert(JsonElement element,  HtmlTableOptions? options = null);
+    public static void   Convert(JsonElement element,  TextWriter writer, HtmlTableOptions? options = null);
+
+    public static string ConvertObject(
+        object? value,
+        HtmlTableOptions? options = null,
+        JsonSerializerOptions? serializerOptions = null);
+
+    public static bool TryConvert(string? json, out string html, HtmlTableOptions? options = null);
+}</pre>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap">
+    <div>
+      &copy; <span id="yr"></span> JsonToHtmlTable contributors &middot;
+      <a href="https://github.com/khajahussainucw/JsonToHtmlTable/blob/main/LICENSE">MIT License</a>
+    </div>
+    <div>
+      <a href="https://www.nuget.org/packages/JsonToHtmlTable">NuGet</a> &middot;
+      <a href="https://github.com/khajahussainucw/JsonToHtmlTable">Source</a> &middot;
+      <a href="https://github.com/khajahussainucw/JsonToHtmlTable/issues">Issues</a>
+    </div>
+  </div>
+</footer>
+
+<script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+
+</body>
+</html>
