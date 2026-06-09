@@ -6,7 +6,7 @@
 
 **Website:** [jsontotable.org](https://jsontotable.org) · **Source:** [GitHub](https://github.com/khajahussainucw/JsonToHtmlTable)
 
-Take any JSON, get back an HTML `<table>`. That's it.
+Take any JSON, get back an HTML `<table>`. That's it. 
 
 If you've ever needed to render an API response in an internal admin page, drop a CDR export into an email, or just visualize a config file without writing yet another `foreach`, this library is for you. Pass JSON in, you get a clean HTML table back — nested objects become nested tables, arrays of records become grids, everything is HTML-encoded so you can't accidentally ship an XSS bug.
 
