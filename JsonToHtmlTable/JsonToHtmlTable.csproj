@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>false</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>JsonToHtmlTable</RootNamespace>
+    <AssemblyName>JsonToHtmlTable</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>JsonToHtmlTable</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Khaja Hussain</Authors>
+    <Company>Khaja Hussain</Company>
+    <Description>Convert any JSON (objects, arrays, deeply nested structures) into a clean HTML table string. Built on System.Text.Json — no Newtonsoft dependency forced on consumers.</Description>
+    <PackageTags>json;html;table;converter;json-to-html;json-to-table;nested-json</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/khajahussainucw/JsonToHtmlTable</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/khajahussainucw/JsonToHtmlTable</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
