@@ -1,0 +1,4 @@
+[
+    { "callId": "C-1", "durationSec": 42 },
+    { "callId": "C-2", "durationSec": 17 }
+]

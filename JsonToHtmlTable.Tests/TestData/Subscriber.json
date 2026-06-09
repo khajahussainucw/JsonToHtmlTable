@@ -1,0 +1,9 @@
+{
+    "subscriberId": "SUB-100245",
+    "msisdn": "+91-9876500000",
+    "planName": "Postpaid Pro 599",
+    "isActive": true,
+    "balance": 412.75,
+    "tags": ["VoLTE", "5G", "Roaming"],
+    "address": { "circle": "APAC-IN", "billingZone": "ZN-7" }
+}

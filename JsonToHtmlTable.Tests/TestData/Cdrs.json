@@ -1,0 +1,5 @@
+[
+    { "callId": "C-001", "originator": "9876500000", "destination": "9123400000", "durationSec": 73, "billedAmount": 1.21 },
+    { "callId": "C-002", "originator": "9876500001", "destination": "9123400022", "durationSec": 14, "billedAmount": 0.30 },
+    { "callId": "C-003", "originator": "9876500099", "destination": "9123400088", "durationSec": 412, "billedAmount": 6.85 }
+]

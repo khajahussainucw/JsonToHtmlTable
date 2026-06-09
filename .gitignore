@@ -13,6 +13,7 @@
 packages/
 *.nuget.props
 *.nuget.targets
+artifacts/
 
 # --- Visual Studio / Rider / VS Code ---
 .vs/
@@ -49,3 +50,6 @@ Desktop.ini
 appsettings.*.local.json
 secrets.json
 *.pfx
+
+.claude/
+CLAUDE.md
