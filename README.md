@@ -3,9 +3,11 @@
 [![NuGet](https://img.shields.io/nuget/v/JsonToHtmlTable.svg)](https://www.nuget.org/packages/JsonToHtmlTable)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Take any JSON, get back an HTML table. That's it.
+Take any JSON, get back an HTML `<table>`. That's it.
 
-If you've ever needed to render an API response in an internal admin page, drop a CDR export into an email, or just visualize a config file without writing yet another `foreach`, this library is for you. Pass JSON in, you get clean HTML out — nested objects become nested tables, arrays of records become grids, everything is HTML-encoded so you can't accidentally ship an XSS bug.
+If you've ever needed to render an API response in an internal admin page, drop a CDR export into an email, or just visualize a config file without writing yet another `foreach`, this library is for you. Pass JSON in, you get a clean HTML table back — nested objects become nested tables, arrays of records become grids, everything is HTML-encoded so you can't accidentally ship an XSS bug.
+
+**The output is always a bare `<table>...</table>` fragment** — no document wrapper, no `<style>` block, no `<caption>`. You drop it into whatever page or surface you want. The library does conversion, not page layout.
 
 It's built on the built-in `System.Text.Json`, so installing it doesn't drag a `Newtonsoft.Json` version into your project. It targets `netstandard2.0`, which is the polite way of saying it runs basically everywhere — old .NET Framework apps, modern .NET 10, Xamarin, Unity, the works.
 
@@ -33,6 +35,7 @@ string json = """
 """;
 
 string html = JsonToHtmlConverter.Convert(json);
+// → <table class="json-to-html-table">...</table>
 ```
 
 You get back a `<table>` with the simple fields as rows, the `tags` array as a nested mini-table, and `address` recursively rendered as its own table inside a cell. Drop it into a `<div>`, style it however you want.
@@ -117,6 +120,16 @@ var html = JsonToHtmlConverter.Convert(messyJson, new HtmlTableOptions
 
 The default is strict parsing — lenient mode is a deliberate choice you make.
 
+## "I want visible borders without writing CSS"
+
+By default, the output is a bare `<table class="json-to-html-table">…</table>` with no inline styling — designed for pages that already have a stylesheet. If you're dropping the output somewhere CSS won't reach (an HTML email, a Notion page, a quick test file), turn on `InlineStyles`:
+
+```csharp
+var html = JsonToHtmlConverter.Convert(json, new HtmlTableOptions { InlineStyles = true });
+```
+
+That emits inline `style="..."` attributes on `<table>`, `<th>`, and `<td>` with borders, padding, and a header background. Enough to look correct anywhere — no external CSS needed.
+
 ## What it handles
 
 | You give it...                 | You get back...                                                        |
@@ -127,21 +140,18 @@ The default is strict parsing — lenient mode is a deliberate choice you make.
 | An array of arrays (a matrix)  | Each inner array as a nested table inside its row                      |
 | A mixed-type array             | Single-column fallback; objects render as inner tables                 |
 | Anything nested                | Recursively rendered — there is no depth that breaks it (up to `MaxDepth`) |
-| A top-level primitive          | Just the encoded value (no wrapper)                                    |
+| A top-level primitive          | Just the encoded value (no table wrapper)                              |
 | Strings with HTML in them      | Encoded — safe to drop into a page (no XSS)                            |
 | Unicode (Hindi, Japanese, etc.)| Preserved as-is                                                        |
 | Big numbers, decimals, scientific notation | Raw JSON text, no precision loss                           |
 | `null` or missing fields       | Whatever `NullText` says (empty string by default)                     |
 
-## Customizing the output
-
-Everything's tweakable via `HtmlTableOptions`. Here's a kitchen-sink example you can read top to bottom:
+## All options
 
 ```csharp
 var html = JsonToHtmlConverter.Convert(json, new HtmlTableOptions
 {
     TableCssClass        = "table table-striped",
-    Caption              = "Active Subscribers — APAC",
     KeyHeader            = "Field",
     ValueHeader          = "Data",
     PrimitiveArrayHeader = "Tag",
@@ -149,9 +159,7 @@ var html = JsonToHtmlConverter.Convert(json, new HtmlTableOptions
     ShowRowNumbers       = true,
     KeyTransform         = key => System.Text.RegularExpressions.Regex
                               .Replace(key, "([a-z])([A-Z])", "$1 $2"),   // msisdnNumber → "msisdn Number"
-    WrapInHtmlDocument   = true,
-    DocumentTitle        = "Subscriber Report",
-    IncludeDefaultStyles = true,
+    InlineStyles         = true,
     MaxDepth             = 32,
     ParseOptions         = new JsonDocumentOptions
     {
@@ -160,8 +168,6 @@ var html = JsonToHtmlConverter.Convert(json, new HtmlTableOptions
     }
 });
 ```
-
-### Every option, explained
 
 | Option                       | Default                  | What it does                                                              |
 | ---------------------------- | ------------------------ | ------------------------------------------------------------------------- |
@@ -172,11 +178,8 @@ var html = JsonToHtmlConverter.Convert(json, new HtmlTableOptions
 | `RenderArrayOfObjectsAsGrid` | `true`                   | Turn off if you'd rather render each record as its own little table.       |
 | `ShowRowNumbers`             | `false`                  | Adds a leading index column to grids and primitive arrays.                |
 | `RowNumberHeader`            | `"#"`                    | What to call the index column.                                            |
-| `KeyTransform`               | `null`                   | A `Func<string, string>` to rewrite property names at render time.         |
-| `Caption`                    | `null`                   | Adds a `<caption>` to the outermost table.                                |
-| `WrapInHtmlDocument`         | `false`                  | Wrap the table in a full `<!DOCTYPE html>…</html>` page.                  |
-| `DocumentTitle`              | `"JSON Table"`           | The `<title>` when wrapping.                                              |
-| `IncludeDefaultStyles`       | `false`                  | Inline a small stylesheet when wrapping, so it looks decent out of the box. |
+| `KeyTransform`               | `null`                   | `Func<string, string>` to rewrite property names at render time.          |
+| `InlineStyles`               | `false`                  | Inline `style="..."` on every table/th/td so it looks right without CSS.  |
 | `MaxDepth`                   | `64`                     | A safety net for pathological JSON. You shouldn't need to touch this.     |
 | `ParseOptions`               | strict                   | `JsonDocumentOptions` — opt into comments / trailing commas / larger depth. |
 
@@ -217,15 +220,21 @@ Everything user-supplied gets run through `System.Text.Encodings.Web.HtmlEncoder
 
 Property names and CSS class values get the same treatment. Even if someone hands you JSON like `{ "<script>": "trouble" }`, it ends up as text, not a payload.
 
-## Contributing
+## Tested
 
-Pull requests welcome. Bug reports even more so. Before you submit a PR:
+Every public behavior is covered by xUnit tests — objects, arrays, nesting, HTML encoding, lenient parsing, large numbers, Unicode, edge cases, the lot. They run in under half a second.
+
+![All tests passing](docs/tests-passing.png)
+
+You can run them yourself any time:
 
 ```bash
 dotnet test
 ```
 
-…should be green. If you're adding a feature, add a test for it.
+## Contributing
+
+Pull requests welcome. Bug reports even more so. Before you submit a PR, make sure `dotnet test` is green. If you're adding a feature, add a test for it.
 
 ## License
 

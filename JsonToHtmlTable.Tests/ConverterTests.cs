@@ -277,27 +277,6 @@ public class ConverterTests
     }
 
     [Fact]
-    public void Caption_IsEmittedOnOutermostTable()
-    {
-        var html = JsonToHtmlConverter.Convert(
-            "{\"a\":1}",
-            new HtmlTableOptions { Caption = "Active CDRs" });
-        Assert.Contains("<caption>Active CDRs</caption>", html);
-    }
-
-    [Fact]
-    public void Caption_IsNotEmittedOnInnerTables()
-    {
-        var html = JsonToHtmlConverter.Convert(
-            JsonFiles.Read("OuterInner.json"),
-            new HtmlTableOptions { Caption = "Only Outer" });
-        var first = html.IndexOf("<caption>");
-        var last = html.LastIndexOf("<caption>");
-        Assert.Equal(first, last);
-        Assert.NotEqual(-1, first);
-    }
-
-    [Fact]
     public void ShowRowNumbers_AddsIndexColumnToGrid()
     {
         var html = JsonToHtmlConverter.Convert(
@@ -355,38 +334,69 @@ public class ConverterTests
         Assert.Contains("<tr><td><table", html);
     }
 
-    // ---------- Document wrapping ----------
+    // ---------- Output is always a bare table fragment ----------
 
     [Fact]
-    public void WrapInHtmlDocument_EmitsFullDocument()
+    public void Output_AlwaysStartsWithTableTag()
     {
-        var html = JsonToHtmlConverter.Convert(
-            "{\"a\":1}",
-            new HtmlTableOptions { WrapInHtmlDocument = true });
-        Assert.StartsWith("<!DOCTYPE html>", html);
-        Assert.Contains("<html>", html);
-        Assert.Contains("<body>", html);
-        Assert.EndsWith("</body></html>", html);
+        var html = JsonToHtmlConverter.Convert("{\"a\":1}");
+        Assert.StartsWith("<table", html);
     }
 
     [Fact]
-    public void IncludeDefaultStyles_EmitsStyleTag()
+    public void Output_AlwaysEndsWithClosingTableTag()
     {
-        var html = JsonToHtmlConverter.Convert(
-            "{\"a\":1}",
-            new HtmlTableOptions { WrapInHtmlDocument = true, IncludeDefaultStyles = true });
-        Assert.Contains("<style>", html);
-        Assert.Contains("json-to-html-table", html);
+        var html = JsonToHtmlConverter.Convert("{\"a\":1}");
+        Assert.EndsWith("</table>", html);
     }
 
     [Fact]
-    public void DocumentTitle_IsHtmlEncoded()
+    public void Output_NeverContainsDocumentChrome()
+    {
+        var html = JsonToHtmlConverter.Convert(JsonFiles.Read("Subscriber.json"));
+        Assert.DoesNotContain("<!DOCTYPE", html);
+        Assert.DoesNotContain("<html", html);
+        Assert.DoesNotContain("<head", html);
+        Assert.DoesNotContain("<body", html);
+        Assert.DoesNotContain("<style", html);
+        Assert.DoesNotContain("<title", html);
+        Assert.DoesNotContain("<caption", html);
+    }
+
+    // ---------- InlineStyles ----------
+
+    [Fact]
+    public void InlineStyles_OmittedByDefault()
+    {
+        var html = JsonToHtmlConverter.Convert("{\"a\":1}");
+        Assert.DoesNotContain("style=", html);
+    }
+
+    [Fact]
+    public void InlineStyles_AddsStyleAttributesToTableAndCells()
     {
         var html = JsonToHtmlConverter.Convert(
             "{\"a\":1}",
-            new HtmlTableOptions { WrapInHtmlDocument = true, DocumentTitle = "<bad>" });
-        Assert.DoesNotContain("<title><bad>", html);
-        Assert.Contains("<title>&lt;bad&gt;</title>", html);
+            new HtmlTableOptions { InlineStyles = true });
+
+        Assert.Contains("<table", html);
+        Assert.Contains("border-collapse:collapse", html);
+        Assert.Contains("<th style=\"", html);
+        Assert.Contains("<td style=\"", html);
+        Assert.Contains("border:1px solid", html);
+    }
+
+    [Fact]
+    public void InlineStyles_AppliesRecursivelyToNestedTables()
+    {
+        var html = JsonToHtmlConverter.Convert(
+            JsonFiles.Read("NestedPlan.json"),
+            new HtmlTableOptions { InlineStyles = true });
+
+        // Inner table also gets inline styles.
+        var firstStyle = html.IndexOf("style=\"border-collapse");
+        var lastStyle = html.LastIndexOf("style=\"border-collapse");
+        Assert.NotEqual(firstStyle, lastStyle); // at least two style attributes => outer + inner table
     }
 
     // ---------- Lenient parsing ----------
@@ -545,7 +555,6 @@ public class ConverterTests
         Assert.NotEmpty(JsonFiles.Read("Matrix.json"));
         Assert.NotEmpty(JsonFiles.Read("NestedPlan.json"));
         Assert.NotEmpty(JsonFiles.Read("DeeplyNested.json"));
-        Assert.NotEmpty(JsonFiles.Read("OuterInner.json"));
         Assert.NotEmpty(JsonFiles.Read("TrailingCommas.json"));
         Assert.NotEmpty(JsonFiles.Read("WithComments.json"));
     }

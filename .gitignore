@@ -38,6 +38,9 @@ x86/
 *.dll
 *.exe
 
+# Generated sample HTML written by SampleOutputs tests
+JsonToHtmlTable.Tests/Output/
+
 # --- OS junk ---
 Thumbs.db
 ehthumbs.db

@@ -8,10 +8,14 @@ namespace JsonToHtmlTable
     /// All properties have sensible defaults — pass <see cref="HtmlTableOptions.Default"/>
     /// or simply omit the argument for the standard rendering.
     /// </summary>
+    /// <remarks>
+    /// The library only ever emits an HTML <c>&lt;table&gt;</c> fragment. Document chrome —
+    /// titles, stylesheets, headings — is the caller's responsibility.
+    /// </remarks>
     public sealed class HtmlTableOptions
     {
         /// <summary>
-        /// CSS class added to every &lt;table&gt; element. Defaults to <c>"json-to-html-table"</c>.
+        /// CSS class added to every <c>&lt;table&gt;</c> element. Defaults to <c>"json-to-html-table"</c>.
         /// Set to <c>null</c> or empty to omit the class attribute entirely.
         /// </summary>
         public string? TableCssClass { get; set; } = "json-to-html-table";
@@ -66,31 +70,12 @@ namespace JsonToHtmlTable
         public Func<string, string>? KeyTransform { get; set; }
 
         /// <summary>
-        /// Optional caption rendered as a <c>&lt;caption&gt;</c> element on the outermost table.
-        /// Defaults to <c>null</c> (no caption).
+        /// When true, emits minimal inline <c>style</c> attributes on every <c>&lt;table&gt;</c>,
+        /// <c>&lt;th&gt;</c>, and <c>&lt;td&gt;</c> so the table renders with visible borders and
+        /// padding without requiring any external CSS. Useful for emails, copy/paste into rich-text
+        /// surfaces, and quick previews. Defaults to <c>false</c>.
         /// </summary>
-        public string? Caption { get; set; }
-
-        /// <summary>
-        /// When true, the result is wrapped in a full HTML5 document
-        /// (<c>&lt;!DOCTYPE html&gt;…&lt;html&gt;…&lt;body&gt;…</c>).
-        /// Combine with <see cref="DocumentTitle"/> and <see cref="IncludeDefaultStyles"/>.
-        /// Defaults to <c>false</c> — by default, only the table fragment is returned.
-        /// </summary>
-        public bool WrapInHtmlDocument { get; set; }
-
-        /// <summary>
-        /// Title used when <see cref="WrapInHtmlDocument"/> is enabled.
-        /// Defaults to <c>"JSON Table"</c>.
-        /// </summary>
-        public string DocumentTitle { get; set; } = "JSON Table";
-
-        /// <summary>
-        /// When true and <see cref="WrapInHtmlDocument"/> is enabled, a small inline stylesheet
-        /// is emitted in the document head so the output looks reasonable without any external CSS.
-        /// Defaults to <c>false</c>.
-        /// </summary>
-        public bool IncludeDefaultStyles { get; set; }
+        public bool InlineStyles { get; set; }
 
         /// <summary>
         /// Maximum recursion depth for nested structures. Protects against pathological or

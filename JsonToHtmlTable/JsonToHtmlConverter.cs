@@ -10,26 +10,22 @@ namespace JsonToHtmlTable
 {
     /// <summary>
     /// Converts JSON (a string, a <see cref="JsonDocument"/>, a <see cref="JsonElement"/>,
-    /// or any CLR object) into an HTML table string. Supports arbitrarily nested objects
-    /// and arrays. All text is HTML-encoded — safe to embed in any document.
+    /// or any CLR object) into an HTML <c>&lt;table&gt;</c> fragment. Supports arbitrarily
+    /// nested objects and arrays. All text is HTML-encoded — safe to embed in any document.
     /// </summary>
-    /// <example>
-    /// <code>
-    /// string json = "{\"name\":\"Khaja\",\"skills\":[\"C#\",\"SQL\"]}";
-    /// string html = JsonToHtmlConverter.Convert(json);
-    /// </code>
-    /// </example>
+    /// <remarks>
+    /// The output is always a table fragment (starts with <c>&lt;table&gt;</c>, ends with
+    /// <c>&lt;/table&gt;</c>) — never a full HTML document. Wrap it yourself if you need a page.
+    /// </remarks>
     public static class JsonToHtmlConverter
     {
         // Allow international characters through while still XSS-safe.
         private static readonly HtmlEncoder s_encoder = HtmlEncoder.Create(UnicodeRanges.All);
 
-        private const string DefaultStyles =
-            "body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:1.5rem;color:#222}" +
-            "table.json-to-html-table{border-collapse:collapse;margin:.5rem 0;font-size:14px}" +
-            "table.json-to-html-table th,table.json-to-html-table td{border:1px solid #ccc;padding:.4rem .6rem;text-align:left;vertical-align:top}" +
-            "table.json-to-html-table th{background:#f4f4f4;font-weight:600}" +
-            "table.json-to-html-table caption{font-weight:600;padding:.4rem 0;text-align:left}";
+        // Inline styles used when HtmlTableOptions.InlineStyles is true.
+        private const string TableStyle = "border-collapse:collapse;margin:.5rem 0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px";
+        private const string ThStyle    = "border:1px solid #ccc;padding:.4rem .6rem;text-align:left;background:#f4f4f4;font-weight:600";
+        private const string TdStyle    = "border:1px solid #ccc;padding:.4rem .6rem;text-align:left;vertical-align:top";
 
         // ---------- string input ----------
 
@@ -80,7 +76,7 @@ namespace JsonToHtmlTable
             var opts = options ?? HtmlTableOptions.Default;
             var sb = new StringBuilder(256);
             using var writer = new StringWriter(sb);
-            WriteRoot(writer, element, opts);
+            WriteValue(writer, element, opts, depth: 0);
             return sb.ToString();
         }
 
@@ -91,7 +87,7 @@ namespace JsonToHtmlTable
         {
             if (writer == null) throw new ArgumentNullException(nameof(writer));
             var opts = options ?? HtmlTableOptions.Default;
-            WriteRoot(writer, element, opts);
+            WriteValue(writer, element, opts, depth: 0);
         }
 
         // ---------- CLR object input ----------
@@ -138,30 +134,7 @@ namespace JsonToHtmlTable
 
         // ---------- Core rendering ----------
 
-        private static void WriteRoot(TextWriter w, JsonElement element, HtmlTableOptions opts)
-        {
-            if (opts.WrapInHtmlDocument)
-            {
-                w.Write("<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>");
-                WriteEncoded(w, opts.DocumentTitle);
-                w.Write("</title>");
-                if (opts.IncludeDefaultStyles)
-                {
-                    w.Write("<style>");
-                    w.Write(DefaultStyles);
-                    w.Write("</style>");
-                }
-                w.Write("</head><body>");
-                WriteValue(w, element, opts, depth: 0, isOutermost: true);
-                w.Write("</body></html>");
-            }
-            else
-            {
-                WriteValue(w, element, opts, depth: 0, isOutermost: true);
-            }
-        }
-
-        private static void WriteValue(TextWriter w, JsonElement element, HtmlTableOptions opts, int depth, bool isOutermost = false)
+        private static void WriteValue(TextWriter w, JsonElement element, HtmlTableOptions opts, int depth)
         {
             if (depth > opts.MaxDepth)
             {
@@ -172,10 +145,10 @@ namespace JsonToHtmlTable
             switch (element.ValueKind)
             {
                 case JsonValueKind.Object:
-                    WriteObject(w, element, opts, depth, isOutermost);
+                    WriteObject(w, element, opts, depth);
                     break;
                 case JsonValueKind.Array:
-                    WriteArray(w, element, opts, depth, isOutermost);
+                    WriteArray(w, element, opts, depth);
                     break;
                 case JsonValueKind.String:
                     WriteEncoded(w, element.GetString());
@@ -197,20 +170,21 @@ namespace JsonToHtmlTable
             }
         }
 
-        private static void WriteObject(TextWriter w, JsonElement obj, HtmlTableOptions opts, int depth, bool isOutermost)
+        private static void WriteObject(TextWriter w, JsonElement obj, HtmlTableOptions opts, int depth)
         {
-            WriteTableOpen(w, opts, isOutermost);
-            w.Write("<thead><tr><th>");
-            WriteEncoded(w, opts.KeyHeader);
-            w.Write("</th><th>");
-            WriteEncoded(w, opts.ValueHeader);
-            w.Write("</th></tr></thead><tbody>");
+            WriteTableOpen(w, opts);
+            w.Write("<thead><tr>");
+            WriteTh(w, opts, opts.KeyHeader);
+            WriteTh(w, opts, opts.ValueHeader);
+            w.Write("</tr></thead><tbody>");
 
             foreach (var prop in obj.EnumerateObject())
             {
-                w.Write("<tr><td>");
+                w.Write("<tr>");
+                WriteTd(w, opts);
                 WriteEncoded(w, TransformKey(prop.Name, opts));
-                w.Write("</td><td>");
+                w.Write("</td>");
+                WriteTd(w, opts);
                 WriteValue(w, prop.Value, opts, depth + 1);
                 w.Write("</td></tr>");
             }
@@ -218,36 +192,30 @@ namespace JsonToHtmlTable
             w.Write("</tbody></table>");
         }
 
-        private static void WriteArray(TextWriter w, JsonElement array, HtmlTableOptions opts, int depth, bool isOutermost)
+        private static void WriteArray(TextWriter w, JsonElement array, HtmlTableOptions opts, int depth)
         {
             if (array.GetArrayLength() == 0)
             {
-                WriteTableOpen(w, opts, isOutermost);
+                WriteTableOpen(w, opts);
                 w.Write("<tbody></tbody></table>");
                 return;
             }
 
             if (opts.RenderArrayOfObjectsAsGrid && IsArrayOfObjects(array))
             {
-                WriteArrayAsGrid(w, array, opts, depth, isOutermost);
+                WriteArrayAsGrid(w, array, opts, depth);
                 return;
             }
 
             // Single-column table for primitives or mixed arrays.
-            WriteTableOpen(w, opts, isOutermost);
+            WriteTableOpen(w, opts);
             var header = opts.PrimitiveArrayHeader;
             if (opts.ShowRowNumbers || !string.IsNullOrEmpty(header))
             {
                 w.Write("<thead><tr>");
-                if (opts.ShowRowNumbers)
-                {
-                    w.Write("<th>");
-                    WriteEncoded(w, opts.RowNumberHeader);
-                    w.Write("</th>");
-                }
-                w.Write("<th>");
-                WriteEncoded(w, header ?? string.Empty);
-                w.Write("</th></tr></thead>");
+                if (opts.ShowRowNumbers) WriteTh(w, opts, opts.RowNumberHeader);
+                WriteTh(w, opts, header ?? string.Empty);
+                w.Write("</tr></thead>");
             }
             w.Write("<tbody>");
             int rowIndex = 1;
@@ -256,11 +224,11 @@ namespace JsonToHtmlTable
                 w.Write("<tr>");
                 if (opts.ShowRowNumbers)
                 {
-                    w.Write("<td>");
+                    WriteTd(w, opts);
                     w.Write(rowIndex.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     w.Write("</td>");
                 }
-                w.Write("<td>");
+                WriteTd(w, opts);
                 WriteValue(w, item, opts, depth + 1);
                 w.Write("</td></tr>");
                 rowIndex++;
@@ -268,7 +236,7 @@ namespace JsonToHtmlTable
             w.Write("</tbody></table>");
         }
 
-        private static void WriteArrayAsGrid(TextWriter w, JsonElement array, HtmlTableOptions opts, int depth, bool isOutermost)
+        private static void WriteArrayAsGrid(TextWriter w, JsonElement array, HtmlTableOptions opts, int depth)
         {
             var columns = new List<string>();
             var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -280,20 +248,10 @@ namespace JsonToHtmlTable
                 }
             }
 
-            WriteTableOpen(w, opts, isOutermost);
+            WriteTableOpen(w, opts);
             w.Write("<thead><tr>");
-            if (opts.ShowRowNumbers)
-            {
-                w.Write("<th>");
-                WriteEncoded(w, opts.RowNumberHeader);
-                w.Write("</th>");
-            }
-            foreach (var col in columns)
-            {
-                w.Write("<th>");
-                WriteEncoded(w, TransformKey(col, opts));
-                w.Write("</th>");
-            }
+            if (opts.ShowRowNumbers) WriteTh(w, opts, opts.RowNumberHeader);
+            foreach (var col in columns) WriteTh(w, opts, TransformKey(col, opts));
             w.Write("</tr></thead><tbody>");
 
             int rowIndex = 1;
@@ -302,13 +260,13 @@ namespace JsonToHtmlTable
                 w.Write("<tr>");
                 if (opts.ShowRowNumbers)
                 {
-                    w.Write("<td>");
+                    WriteTd(w, opts);
                     w.Write(rowIndex.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     w.Write("</td>");
                 }
                 foreach (var col in columns)
                 {
-                    w.Write("<td>");
+                    WriteTd(w, opts);
                     if (item.TryGetProperty(col, out var cell))
                     {
                         WriteValue(w, cell, opts, depth + 1);
@@ -335,24 +293,50 @@ namespace JsonToHtmlTable
             return true;
         }
 
-        private static void WriteTableOpen(TextWriter w, HtmlTableOptions opts, bool isOutermost)
+        // ---------- Element emitters ----------
+
+        private static void WriteTableOpen(TextWriter w, HtmlTableOptions opts)
         {
-            if (string.IsNullOrEmpty(opts.TableCssClass))
+            w.Write("<table");
+            if (!string.IsNullOrEmpty(opts.TableCssClass))
             {
-                w.Write("<table>");
-            }
-            else
-            {
-                w.Write("<table class=\"");
+                w.Write(" class=\"");
                 WriteEncoded(w, opts.TableCssClass);
-                w.Write("\">");
+                w.Write("\"");
             }
-            if (isOutermost && !string.IsNullOrEmpty(opts.Caption))
+            if (opts.InlineStyles)
             {
-                w.Write("<caption>");
-                WriteEncoded(w, opts.Caption);
-                w.Write("</caption>");
+                w.Write(" style=\"");
+                w.Write(TableStyle);
+                w.Write("\"");
             }
+            w.Write(">");
+        }
+
+        private static void WriteTh(TextWriter w, HtmlTableOptions opts, string text)
+        {
+            w.Write("<th");
+            if (opts.InlineStyles)
+            {
+                w.Write(" style=\"");
+                w.Write(ThStyle);
+                w.Write("\"");
+            }
+            w.Write(">");
+            WriteEncoded(w, text);
+            w.Write("</th>");
+        }
+
+        private static void WriteTd(TextWriter w, HtmlTableOptions opts)
+        {
+            w.Write("<td");
+            if (opts.InlineStyles)
+            {
+                w.Write(" style=\"");
+                w.Write(TdStyle);
+                w.Write("\"");
+            }
+            w.Write(">");
         }
 
         private static string TransformKey(string key, HtmlTableOptions opts)
