@@ -12,14 +12,14 @@
 
   <PropertyGroup>
     <PackageId>JsonToHtmlTable</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Khaja Hussain</Authors>
     <Company>Khaja Hussain</Company>
     <Description>Convert any JSON (objects, arrays, deeply nested structures) into a clean HTML table string. Built on System.Text.Json — no Newtonsoft dependency forced on consumers.</Description>
     <PackageTags>json;html;table;converter;json-to-html;json-to-table;nested-json</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>https://github.com/khajahussainucw/JsonToHtmlTable</PackageProjectUrl>
+    <PackageProjectUrl>https://jsontotable.org</PackageProjectUrl>
     <RepositoryUrl>https://github.com/khajahussainucw/JsonToHtmlTable</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
